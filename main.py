@@ -52,7 +52,7 @@ try:
         hovermode='closest',
         mapbox=dict(
             accesstoken=TOKEN,
-            style="satellite-streets", # Generic name is usually safer
+            style="mapbox://styles/mapbox/satellite-streets-v12", # Generic name is usually safer
             bearing=15, # Slight rotation to show it's working
             pitch=tilt,
             zoom=16,
@@ -67,3 +67,4 @@ try:
 except Exception as e:
     st.error(f"Map Error: {e}")
     st.write("If you see this, we need to check your 'Requirements.txt' file.")
+
