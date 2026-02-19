@@ -88,7 +88,7 @@ fig.add_trace(go.Scattermapbox(
 fig.update_layout(
     mapbox=dict(
         accesstoken=MAPBOX_TOKEN,
-        style="satellite-streets",
+        style="mapbox://styles/mapbox/satellite-streets-v12"
         center=dict(lat=(st.session_state.ball[0] + st.session_state.target[0])/2, 
                     lon=(st.session_state.ball[1] + st.session_state.target[1])/2),
         zoom=17.5,
@@ -99,5 +99,10 @@ fig.update_layout(
     margin={"r":0,"t":0,"l":0,"b":0}, height=800, showlegend=False
 )
 
+# Temporary Debug Line
+# if map is blank, change style to "open-street-map" (doesn't require token)
+fig.update_layout(mapbox_style="open-street-map")
+
 # Render
 st.plotly_chart(fig, use_container_width=True)
+
