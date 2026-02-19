@@ -52,14 +52,14 @@ try:
         hovermode='closest',
         mapbox=dict(
             accesstoken=TOKEN,
-            style="mapbox://styles/mapbox/satellite-streets-v12", # Generic name is usually safer
-            bearing=15, # Slight rotation to show it's working
-            pitch=tilt,
-            zoom=16,
-            center=dict(lat=ball[0], lon=ball[1]),
+            style="mapbox://styles/mapbox/satellite-streets-v12", # <-- Ensure comma here
+            bearing=current_bearing,                              # <-- And here
+            pitch=tilt,                                          # <-- And here
+            zoom=17.5,
+            center=dict(lat=ball[0], lon=ball[1])                # No comma needed on last item
         ),
         margin={"r":0,"t":0,"l":0,"b":0},
-        height=700
+        height=750
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -67,4 +67,5 @@ try:
 except Exception as e:
     st.error(f"Map Error: {e}")
     st.write("If you see this, we need to check your 'Requirements.txt' file.")
+
 
