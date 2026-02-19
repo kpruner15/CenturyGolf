@@ -1,9 +1,8 @@
 import streamlit as st
 import plotly.graph_objects as go
-import pandas as pd
 import math
 
-# --- 1. THE PERMANENT CENTURYGOLF BAG ---
+# --- CENTURYGOLF DATA ---
 stats = {
     "5-Wood": {"avg": 218.5, "std_c": 2.5, "avg_off": 2.3, "std_off": 6.2},
     "4-Iron": {"avg": 179.8, "std_c": 9.6, "avg_off": 15.6, "std_off": 19.8},
@@ -18,91 +17,53 @@ stats = {
     "LW": {"avg": 88.8,  "std_c": 2.6, "avg_off": 0.5, "std_off": 1.2}
 }
 
-MAPBOX_TOKEN = "pk.eyJ1Ijoia3BydW5lcjE1IiwiYSI6ImNtbHRtcmZqdjAxdmEzZG9rN3BoOHQ3angifQ.sRKt7mL9MLg8gyuLNqPvWQ"
+TOKEN = "pk.eyJ1Ijoia3BydW5lcjE1IiwiYSI6ImNtbHRtcmZqdjAxdmEzZG9rN3BoOHQ3angifQ.sRKt7mL9MLg8gyuLNqPvWQ"
 
 st.set_page_config(page_title="CenturyGolf Pro", layout="wide")
 
-# --- 2. STATE MANAGEMENT ---
-if 'ball' not in st.session_state: st.session_state.ball = [36.5651, -121.9472]
-if 'target' not in st.session_state: st.session_state.target = [36.5670, -121.9450]
-
-# --- 3. MATH HELPERS ---
-def get_dist(lat1, lon1, lat2, lon2):
-    R = 6371000
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi, dlambda = math.radians(lat2-lat1), math.radians(lon2-lon1)
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    return (2 * math.atan2(math.sqrt(a), math.sqrt(1-a)) * R) * 1.09361
-
-def get_bearing(lat1, lon1, lat2, lon2):
-    d_lon = math.radians(lon2 - lon1)
-    y = math.sin(d_lon) * math.cos(math.radians(lat2))
-    x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - \
-        math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(d_lon)
-    return (math.degrees(math.atan2(y, x)) + 360) % 360
-
-def get_ellipse_coords(lat, lon, std_c, std_off, sigma):
-    lats, lons = [], []
-    lat_scale, lon_scale = 0.000009, 0.000009 / math.cos(math.radians(lat))
-    for i in range(0, 365, 10):
-        a = math.radians(i)
-        lats.append(lat + math.sin(a) * (std_c * sigma) * lat_scale)
-        lons.append(lon + math.cos(a) * (std_off * sigma) * lon_scale)
-    return lats, lons
-
-# --- 4. UI ---
+# --- UI SIDEBAR ---
 with st.sidebar:
     st.title("🏆 CenturyGolf")
     club = st.selectbox("Select Club", list(stats.keys()))
     s = stats[club]
     tilt = st.slider("3D Tilt", 0, 60, 45)
-    st.markdown("---")
-    yardage = get_dist(st.session_state.ball[0], st.session_state.ball[1], 
-                       st.session_state.target[0], st.session_state.target[1])
-    st.metric("Total Yards", f"{int(yardage)}y")
+    st.divider()
+    st.write(f"**Targeting with {club}**")
 
-# --- 5. 3D MAP CONSTRUCTION ---
-fig = go.Figure()
+# --- COORDINATES ---
+ball = [36.5651, -121.9472]
+target = [36.5670, -121.9450]
 
-# Tactical Zones (Ellipses)
-bias_lon = st.session_state.target[1] + (s['avg_off'] * 0.000009)
-# 95% Confidence (Yellow)
-y_lat, y_lon = get_ellipse_coords(st.session_state.target[0], bias_lon, s['std_c'], s['std_off'], 2)
-fig.add_trace(go.Scattermapbox(lat=y_lat, lon=y_lon, fill="toself", fillcolor='rgba(255, 255, 0, 0.2)', 
-                               line=dict(width=0), hoverinfo='none', name='95% Range'))
-# 68% Confidence (Red)
-r_lat, r_lon = get_ellipse_coords(st.session_state.target[0], bias_lon, s['std_c'], s['std_off'], 1)
-fig.add_trace(go.Scattermapbox(lat=r_lat, lon=r_lon, fill="toself", fillcolor='rgba(255, 0, 0, 0.4)', 
-                               line=dict(width=0), hoverinfo='none', name='68% Range'))
+# --- THE MAP ENGINE ---
+try:
+    fig = go.Figure()
 
-# Line of Play
-fig.add_trace(go.Scattermapbox(
-    lat=[st.session_state.ball[0], st.session_state.target[0]],
-    lon=[st.session_state.ball[1], st.session_state.target[1]],
-    mode='markers+lines',
-    marker=dict(size=[10, 15], color=['#3498db', '#e74c3c']),
-    line=dict(width=2, color='white', dash='dash')
-))
+    # Add Points
+    fig.add_trace(go.Scattermapbox(
+        lat=[ball[0], target[0]],
+        lon=[ball[1], target[1]],
+        mode='markers+lines',
+        marker=dict(size=[10, 15], color=['blue', 'red']),
+        line=dict(width=2, color='white')
+    ))
 
-# Perspective
-fig.update_layout(
-    mapbox=dict(
-        accesstoken=MAPBOX_TOKEN,
-        style="mapbox://styles/mapbox/satellite-streets-v12"
-        center=dict(lat=(st.session_state.ball[0] + st.session_state.target[0])/2, 
-                    lon=(st.session_state.ball[1] + st.session_state.target[1])/2),
-        zoom=17.5,
-        bearing=get_bearing(st.session_state.ball[0], st.session_state.ball[1], 
-                            st.session_state.target[0], st.session_state.target[1]),
-        pitch=tilt
-    ),
-    margin={"r":0,"t":0,"l":0,"b":0}, height=800, showlegend=False
-)
+    # Forced Layout Config
+    fig.update_layout(
+        hovermode='closest',
+        mapbox=dict(
+            accesstoken=TOKEN,
+            style="satellite-streets", # Generic name is usually safer
+            bearing=15, # Slight rotation to show it's working
+            pitch=tilt,
+            zoom=16,
+            center=dict(lat=ball[0], lon=ball[1]),
+        ),
+        margin={"r":0,"t":0,"l":0,"b":0},
+        height=700
+    )
 
-# Temporary Debug Line
-# if map is blank, change style to "open-street-map" (doesn't require token)
-fig.update_layout(mapbox_style="open-street-map")
+    st.plotly_chart(fig, use_container_width=True)
 
-# Render
-st.plotly_chart(fig, use_container_width=True)
-
+except Exception as e:
+    st.error(f"Map Error: {e}")
+    st.write("If you see this, we need to check your 'Requirements.txt' file.")
